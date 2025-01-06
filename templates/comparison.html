@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">Price Comparison</h1>
+        <form class="form-inline mb-4" method="post">
+            <input class="form-control mr-2" type="text" placeholder="Search for a product" name="product" required>
+            <button class="btn btn-lightgreen" type="submit">Search</button>
+        </form>
+        {% if comparison_data %}
+        <div class="card shadow-lg">
+            <div class="card-header bg-lightgreen text-white">Comparison Table</div>
+            <div class="card-body">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>State</th>
+                            <th>Market Name</th>
+                            <th>Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for data in comparison_data %}
+                        <tr>
+                            <td>{{ data.product }}</td>
+                            <td>{{ data.state }}</td>
+                            <td>{{ data.market_name }}</td>
+                            <td>{{ data.price }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

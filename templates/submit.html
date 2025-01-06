@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <h1 class="mb-4">Submit Price</h1>
+        <div class="card shadow-lg">
+            <div class="card-header bg-lightgreen text-white">Submit Price</div>
+            <div class="card-body">
+                <form action="/submit" method="post">
+                    <div class="form-group">
+                        <label for="product">Product</label>
+                        <select class="form-control" id="product" name="product" required>
+                            <option value="">Select Product</option>
+                            <option value="Bag of Rice"> Bag of Rice</option>
+                            <option value="Bag of Beans">Bag of Beans</option>
+                            <option value="Bag of Maize">Bag of Maize</option>
+                            <option value="Galoon of Red Oil 25L"> Galoon of Red Oil 25L</option>
+                            <option value="Bag of Millet">Bag of Millet</option>
+                            <!-- Add more products as needed -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Price</label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="price" 
+                            name="price" 
+                            required 
+                            pattern="\d*" 
+                            title="Price must be a valid number"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <label for="state">State</label>
+                        <select class="form-control" id="state" name="state" required>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="market_name">Market Name</label>
+                        <select class="form-control" id="market_name" name="market_name" required>
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-lightgreen btn-block">Submit</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const priceInput = document.getElementById('price');
+
+    priceInput.addEventListener('blur', function() {
+        const value = this.value;
+        if (value && !isNaN(value)) {
+            const formattedValue = parseFloat(value).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            this.value = formattedValue;
+        }
+    });
+
+    const marketsByState = {
+        "Abia": ["Ariaria International Market", "New Market Aba", "Aba Mega Mall"],
+        "Adamawa": ["Jimeta Central Market", "Bachure Market", "Jimeta Fish Market"],
+        "Akwa Ibom": ["Urua Akpan Market", "Ikot Ekpene Market", "Eket Main Market"],
+        "Anambra": ["Main Market Onitsha", "Ochanja Market Onitsha", "Nnewi Market"],
+        "Bauchi": ["Wunti Market Bauchi", "Fadama Market Bauchi", "Bogoro Market"],
+        "Bayelsa": ["Swali Market", "Opolo Market", "Yenagoa Main Market"],
+        "Benue": ["Wurukum Market Makurdi", "Modern Market Makurdi", "Wadata Market Makurdi"],
+        "Borno": ["Monday Market Maiduguri", "Customs Market Maiduguri", "Gwange Market Maiduguri"],
+        "Cross River": ["Watt Market Calabar", "Calabar Main Market", "Etaha Market"],
+        "Delta": ["Ogbegonogo Market Asaba", "Ogbe-Ijoh Market Warri", "Abraka Market"],
+        "Ebonyi": ["Abakaliki Main Market", "Kpirikpiri Market", "Ochudo Market"],
+        "Edo": ["Oba Market Benin", "Ekiosa Market Benin", "Oliha Market Benin"],
+        "Ekiti": ["Oja Oba Market Ado Ekiti", "Ikoro Market Ado Ekiti", "Adebayo Market Ado Ekiti"],
+        "Enugu": ["Ogbete Main Market Enugu", "Artisan Market Enugu", "New Market Enugu"],
+        "Gombe": ["Gombe Main Market", "Kumo Market", "Gombe Modern Market"],
+        "Imo": ["Eke Ukwu Owerri Market", "Nkwoala Market Owerri", "Alaba International Market Owerri"],
+        "Jigawa": ["Hadejia Market", "Dutse Market", "Birnin Kudu Market"],
+        "Kaduna": ["Kasuwar Barci Market Kaduna", "Kasuwar Shanu Market Kaduna", "Kasuwar Barchi Market Kaduna"],
+        "Kano": ["Kantin Kwari Market Kano", "Kofar Wambai Market Kano", "Kano City Market"],
+        "Katsina": ["Katsina Central Market", "Sabo Market Katsina", "Kofar Kaura Market Katsina"],
+        "Kebbi": ["Argungu Market", "Kangiwa Market", "Kamba Market"],
+        "Kogi": ["Lokoja Main Market", "Otokiti Market Lokoja", "Ganaja Market Lokoja"],
+        "Kwara": ["Ilorin Central Market", "Oja Oba Market Ilorin", "Adeta Market Ilorin"],
+        "Lagos": ["Balogun Market Lagos", "Idumota Market Lagos", "Mile 12 Market Lagos"],
+        "Nasarawa": ["Lafia Central Market", "Masaka Market", "Keffi Market"],
+        "Niger": ["Tunga Market Minna", "Kure Market Minna", "Gwada Market Minna"],
+        "Ogun": ["Sapon Market Abeokuta", "Oja Oba Market Abeokuta", "Itoku Market Abeokuta"],
+        "Ondo": ["Oja Oba Market Akure", "Igbokoda Market Akure", "Ikare Akoko Market"],
+        "Osun": ["Oja Oba Market Osogbo", "Atewogbeja Market Osogbo", "Orisunbare Market Osogbo"],
+        "Oyo": ["Bodija Market Ibadan", "Gbagi Market Ibadan", "Oje Market Ibadan"],
+        "Plateau": ["Jos Main Market", "Bukuru Market Jos", "Terminus Market Jos"],
+        "Rivers": ["Mile 1 Market Port Harcourt", "Creek Road Market Port Harcourt", "Rumuokoro Market Port Harcourt"],
+        "Sokoto": ["Wurno Market", "Kofar Marke Market Sokoto", "Garkuwa Market Sokoto"],
+        "Taraba": ["Gaduwa Market Jalingo", "Gangi Market Jalingo", "Babbar Ruga Market Jalingo"],
+        "Yobe": ["Gashua Market", "Potiskum Market", "Nguru Market"],
+        "Zamfara": ["Gusau Central Market", "Rawayya Market Gusau", "Birnin Magaji Market Gusau"],
+        "Federal Capital Territory": ["Garki Market Abuja", "Wuse Market Abuja", "Gudu Market Abuja"]
+    };
+
+    const stateSelect = document.getElementById('state');
+    const marketSelect = document.getElementById('market_name');
+
+    // Populate states dropdown
+    Object.keys(marketsByState).forEach(function(state) {
+        let option = document.createElement('option');
+        option.value = state;
+        option.textContent = state;
+        stateSelect.appendChild(option);
+    });
+
+    // Update market names when state is selected
+    stateSelect.addEventListener('change', function() {
+        const selectedState = this.value;
+        const markets = marketsByState[selectedState];
+
+        // Clear previous options
+        marketSelect.innerHTML = '';
+
+        // Add new market options
+        if (markets) {
+            markets.forEach(function(market) {
+                let option = document.createElement('option');
+                option.value = market;
+                option.textContent = market;
+                marketSelect.appendChild(option);
+            });
+        } else {
+            let option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'No markets available';
+            marketSelect.appendChild(option);
+        }
+    });
+});
+</script>
+{% endblock %}

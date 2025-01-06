@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Price Trends</h1>
+    <form id="trends-form" method="post">
+        <div class="form-group">
+            <label for="product">Product</label>
+            <select class="form-control" id="product" name="product" required>
+                {% for product in products %}
+                <option value="{{ product }}">{{ product }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="state">State</label>
+            <select class="form-control" id="state" name="state" required>
+                <option value="Nigeria">Nigeria</option>
+                {% for state in states %}
+                <option value="{{ state }}">{{ state }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="start_date">Start Date</label>
+            <input type="date" class="form-control" id="start_date" name="start_date" required>
+        </div>
+        <div class="form-group">
+            <label for="end_date">End Date</label>
+            <input type="date" class="form-control" id="end_date" name="end_date" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Show Trends</button>
+    </form>
+
+    <div id="priceChart"></div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('trends-form').addEventListener('submit', function(event) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const params = new URLSearchParams();
+        for (const pair of formData) {
+            params.append(pair[0], pair[1]);
+        }
+
+        fetch('/trends', {
+            method: 'POST',
+            body: params
+        })
+        .then(response => response.json())
+        .then(data => {
+            const dates = data.map(item => item.date);
+            const prices = data.map(item => item.mean_price);
+
+            const trace = {
+                x: dates,
+                y: prices,
+                type: 'scatter',
+                mode: 'lines+markers',
+                marker: { color: 'blue' },
+                hovertemplate: '%{y:,.2f}<extra></extra>'
+            };
+
+            const layout = {
+                title: 'Price Trends',
+                xaxis: {
+                    title: 'Date',
+                    type: 'date'
+                },
+                yaxis: {
+                    title: 'Mean Price',
+                    tickformat: ",.2f"
+                }
+            };
+
+            Plotly.newPlot('priceChart', [trace], layout);
+        });
+    });
+});
+</script>
+{% endblock %}
