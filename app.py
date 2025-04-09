@@ -73,7 +73,6 @@ def dashboard():
     return render_template('dashboard.html', prices=prices)
 
 
-
 @app.route('/comparison', methods=['GET', 'POST'])
 def comparison():
     if request.method == 'POST':
@@ -89,50 +88,51 @@ def comparison():
 
 
 
-@app.route('/trends', methods=['GET', 'POST'])
+@app.route('/trends', methods=['GET'])
 def trends():
-    trends_data = []
-    if request.method == 'POST':
-        start_date = request.form['start_date']
-        end_date = request.form['end_date']
-        product = request.form['product']
-        state = request.form['state']
-
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        
-        if state == 'Nigeria':
-            query = '''
-                SELECT date, AVG(price) as mean_price
-                FROM prices
-                WHERE product = %s AND date BETWEEN %s AND %s AND status = "approved"
-                GROUP BY date ORDER BY date
-            '''
-            params = [product, start_date, end_date]
-        else:
-            query = '''
-                SELECT date, AVG(price) as mean_price
-                FROM prices
-                WHERE product = %s AND state = %s AND date BETWEEN %s AND %s AND status = "approved"
-                GROUP BY date ORDER BY date
-            '''
-            params = [product, state, start_date, end_date]
-
-        cursor.execute(query, tuple(params))
-        trends_data = cursor.fetchall()
-        cursor.close()
-
-        # Convert datetime and decimal to string for JSON serialization
-        trends_data = [
-            {'date': record['date'].strftime('%Y-%m-%d'), 'mean_price': float(record['mean_price'])}
-            for record in trends_data
-        ]
-        print(jsonify(trends_data))
-
-        return jsonify(trends_data)
-
-    states = ['Nigeria'] + get_states()
+    states = get_states()
     products = get_products()
-    return render_template('trends.html', trends_data=trends_data, states=states, products=products)
+    return render_template('trends.html', states=states, products=products)
+
+@app.route('/get_trends_data', methods=['POST'])
+def get_trends_data():
+    start_date = request.form['start_date']
+    end_date = request.form['end_date']
+    product = request.form['product']
+    state = request.form['state']
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    if state == 'Nigeria':
+        query = '''
+            SELECT date, AVG(price) as mean_price
+            FROM prices
+            WHERE product = %s AND date BETWEEN %s AND %s AND status = 'approved'
+            GROUP BY date ORDER BY date
+        '''
+        params = [product, start_date, end_date]
+    else:
+        query = '''
+            SELECT date, AVG(price) as mean_price
+            FROM prices
+            WHERE product = %s AND state = %s AND date BETWEEN %s AND %s AND status = 'approved'
+            GROUP BY date ORDER BY date
+        '''
+        params = [product, state, start_date, end_date]
+
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    cursor.close()
+
+    trends_data = [
+        {
+            'date': record['date'].strftime('%Y-%m-%d'),
+            'mean_price': float(record['mean_price']) if record['mean_price'] is not None else 0.0
+        }
+        for record in results
+    ]
+
+    return jsonify(trends_data)
 
 
 def get_states():
@@ -158,16 +158,28 @@ def submit():
     
     if request.method == 'POST':
         product = request.form['product']
-        price = request.form['price']
+        raw_price = request.form['price']
         state = request.form['state']
         market_name = request.form['market_name']
-        
+
+        # Clean and convert price
+        clean_price = raw_price.replace('₦', '').replace(',', '').strip()
+        try:
+            price = float(clean_price)
+        except ValueError:
+            flash('Invalid price format. Please enter a valid number.')
+            return redirect(url_for('submit'))
+
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('INSERT INTO prices (product, price, state, market_name, user_id) VALUES (%s, %s, %s, %s, %s)', (product, price, state, market_name, session['id']))
+        cursor.execute(
+            'INSERT INTO prices (product, price, state, market_name, user_id) VALUES (%s, %s, %s, %s, %s)',
+            (product, price, state, market_name, session.get('id', 0))
+        )
         mysql.connection.commit()
         cursor.close()
-        
+
         return redirect(url_for('dashboard'))
+
     return render_template('submit.html')
 
 

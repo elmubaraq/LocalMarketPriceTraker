@@ -11,37 +11,38 @@
                         <label for="product">Product</label>
                         <select class="form-control" id="product" name="product" required>
                             <option value="">Select Product</option>
-                            <option value="Bag of Rice"> Bag of Rice</option>
+                            <option value="Bag of Rice">Bag of Rice (Foreign)</option>
+                            <option value="Bag of Rice">Bag of Rice (Local)</option>
                             <option value="Bag of Beans">Bag of Beans</option>
                             <option value="Bag of Maize">Bag of Maize</option>
-                            <option value="Galoon of Red Oil 25L"> Galoon of Red Oil 25L</option>
+                            <option value="Galoon of Red Oil 25L">Galoon of Red Oil 25L</option>
                             <option value="Bag of Millet">Bag of Millet</option>
-                            <!-- Add more products as needed -->
                         </select>
                     </div>
                     <div class="form-group">
                         <label for="price">Price</label>
-                        <input 
-                            type="text" 
-                            class="form-control" 
-                            id="price" 
-                            name="price" 
-                            required 
-                            pattern="\d*" 
-                            title="Price must be a valid number"
-                        >
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">₦</span>
+                            </div>
+                            <input 
+                                type="text" 
+                                class="form-control" 
+                                id="price" 
+                                name="price" 
+                                required 
+                                title="Enter a valid amount"
+                                inputmode="decimal"
+                            >
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="state">State</label>
-                        <select class="form-control" id="state" name="state" required>
-                            <!-- Options will be populated dynamically -->
-                        </select>
+                        <select class="form-control" id="state" name="state" required></select>
                     </div>
                     <div class="form-group">
                         <label for="market_name">Market Name</label>
-                        <select class="form-control" id="market_name" name="market_name" required>
-                            <!-- Options will be populated dynamically -->
-                        </select>
+                        <select class="form-control" id="market_name" name="market_name" required></select>
                     </div>
                     <button type="submit" class="btn btn-lightgreen btn-block">Submit</button>
                 </form>
@@ -53,9 +54,12 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const priceInput = document.getElementById('price');
+    const stateSelect = document.getElementById('state');
+    const marketSelect = document.getElementById('market_name');
 
+    // Format price on blur
     priceInput.addEventListener('blur', function() {
-        const value = this.value;
+        let value = this.value.replace(/,/g, '').replace(/[^\d.]/g, '');
         if (value && !isNaN(value)) {
             const formattedValue = parseFloat(value).toLocaleString(undefined, {
                 minimumFractionDigits: 2,
@@ -65,8 +69,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    const marketsByState = {
-        "Abia": ["Ariaria International Market", "New Market Aba", "Aba Mega Mall"],
+    const marketsByState = { "Abia": ["Ariaria International Market", "New Market Aba", "Aba Mega Mall"],
         "Adamawa": ["Jimeta Central Market", "Bachure Market", "Jimeta Fish Market"],
         "Akwa Ibom": ["Urua Akpan Market", "Ikot Ekpene Market", "Eket Main Market"],
         "Anambra": ["Main Market Onitsha", "Ochanja Market Onitsha", "Nnewi Market"],
@@ -102,13 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
         "Taraba": ["Gaduwa Market Jalingo", "Gangi Market Jalingo", "Babbar Ruga Market Jalingo"],
         "Yobe": ["Gashua Market", "Potiskum Market", "Nguru Market"],
         "Zamfara": ["Gusau Central Market", "Rawayya Market Gusau", "Birnin Magaji Market Gusau"],
-        "Federal Capital Territory": ["Garki Market Abuja", "Wuse Market Abuja", "Gudu Market Abuja"]
-    };
-
-    const stateSelect = document.getElementById('state');
-    const marketSelect = document.getElementById('market_name');
-
-    // Populate states dropdown
+        "Federal Capital Territory": ["Garki Market Abuja", "Wuse Market Abuja", "Gudu Market Abuja"] };
+    
     Object.keys(marketsByState).forEach(function(state) {
         let option = document.createElement('option');
         option.value = state;
@@ -116,15 +114,11 @@ document.addEventListener('DOMContentLoaded', function() {
         stateSelect.appendChild(option);
     });
 
-    // Update market names when state is selected
     stateSelect.addEventListener('change', function() {
         const selectedState = this.value;
         const markets = marketsByState[selectedState];
-
-        // Clear previous options
         marketSelect.innerHTML = '';
 
-        // Add new market options
         if (markets) {
             markets.forEach(function(market) {
                 let option = document.createElement('option');
@@ -142,3 +136,5 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
+

@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container">
     <h1>Price Trends</h1>
@@ -15,7 +14,8 @@
         <div class="form-group">
             <label for="state">State</label>
             <select class="form-control" id="state" name="state" required>
-                <option value="Nigeria">Nigeria</option>
+                <option value="">Select a state</option>
+                <option value="Nigeria">All States</option>
                 {% for state in states %}
                 <option value="{{ state }}">{{ state }}</option>
                 {% endfor %}
@@ -29,56 +29,61 @@
             <label for="end_date">End Date</label>
             <input type="date" class="form-control" id="end_date" name="end_date" required>
         </div>
-        <button type="submit" class="btn btn-primary">Show Trends</button>
+        <button type="submit" class="btn btn-primary mt-2">Show Trends</button>
     </form>
 
-    <div id="priceChart"></div>
+    <div id="message" class="mt-3 text-danger"></div>
+    <div id="priceChart" class="mt-4"></div>
 </div>
 
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.getElementById('trends-form').addEventListener('submit', function(event) {
-        event.preventDefault();
+document.getElementById('trends-form').addEventListener('submit', function (event) {
+    event.preventDefault();
 
-        const formData = new FormData(event.target);
-        const params = new URLSearchParams();
-        for (const pair of formData) {
-            params.append(pair[0], pair[1]);
+    const formData = new FormData(event.target);
+    const params = new URLSearchParams(formData);
+
+    document.getElementById('message').textContent = 'Loading...';
+    document.getElementById('priceChart').innerHTML = '';
+
+    fetch('/get_trends_data', {
+        method: 'POST',
+        body: params
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.length === 0) {
+            document.getElementById('message').textContent = 'No data found for this selection.';
+            return;
         }
 
-        fetch('/trends', {
-            method: 'POST',
-            body: params
-        })
-        .then(response => response.json())
-        .then(data => {
-            const dates = data.map(item => item.date);
-            const prices = data.map(item => item.mean_price);
+        document.getElementById('message').textContent = '';
 
-            const trace = {
-                x: dates,
-                y: prices,
-                type: 'scatter',
-                mode: 'lines+markers',
-                marker: { color: 'blue' },
-                hovertemplate: '%{y:,.2f}<extra></extra>'
-            };
+        const dates = data.map(item => item.date);
+        const prices = data.map(item => item.mean_price);
 
-            const layout = {
-                title: 'Price Trends',
-                xaxis: {
-                    title: 'Date',
-                    type: 'date'
-                },
-                yaxis: {
-                    title: 'Mean Price',
-                    tickformat: ",.2f"
-                }
-            };
+        const trace = {
+            x: dates,
+            y: prices,
+            type: 'scatter',
+            mode: 'lines+markers',
+            line: { color: 'green' },
+            marker: { size: 6 },
+            hovertemplate: '₦%{y:,.2f}<extra></extra>'
+        };
 
-            Plotly.newPlot('priceChart', [trace], layout);
-        });
+        const layout = {
+            title: 'Price Trends Over Time',
+            xaxis: { title: 'Date' },
+            yaxis: { title: 'Average Price (₦)', tickformat: ",.2f" }
+        };
+
+        Plotly.newPlot('priceChart', [trace], layout);
+    })
+    .catch(error => {
+        document.getElementById('message').textContent = 'Error loading trends. Please try again.';
+        console.error('Error:', error);
     });
 });
 </script>
