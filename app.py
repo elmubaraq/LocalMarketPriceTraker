@@ -4,11 +4,23 @@ import MySQLdb.cursors
 import bcrypt
 import re
 from decimal import Decimal
-
+import os
 
 
 
 app = Flask(__name__)
+
+#image upload
+import os
+
+UPLOAD_FOLDER = 'static/uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2MB limit
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 # MySQL configurations
 app.config['MYSQL_HOST'] = 'localhost'
@@ -45,6 +57,31 @@ def login():
             return 'Invalid login credentials!'
     return render_template('login.html')
 
+#image upload route
+
+@app.route('/admin/upload_image/<int:id>', methods=['POST'])
+def upload_image(id):
+    if 'loggedin' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+    
+    file = request.files.get('image')
+    if file and allowed_file(file.filename):
+        filename = f"{id}_{file.filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        cursor = mysql.connection.cursor()
+        cursor.execute('UPDATE prices SET image_path = %s WHERE id = %s', (filename, id))
+        mysql.connection.commit()
+        cursor.close()
+
+    return redirect(url_for('admin'))
+
+@app.route('/admin/change_image/<int:id>', methods=['POST'])
+def change_image(id):
+    return upload_image(id)
+
+
 
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -67,7 +104,7 @@ def register():
 @app.route('/dashboard')
 def dashboard():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute('SELECT product, state, market_name, price FROM prices WHERE status = "approved"')
+    cursor.execute('SELECT product, state, market_name, price, image_path FROM prices WHERE status = "approved"')
     prices = cursor.fetchall()
     cursor.close()
     return render_template('dashboard.html', prices=prices)

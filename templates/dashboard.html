@@ -2,13 +2,14 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-4">Dashboard</h1>
+        <h1 class="mb-4 text-center">Dashboard</h1>
         <div class="card shadow-lg">
-            <div class="card-header bg-lightgreen text-white">Current Prices</div>
+            <div class="card-header bg-lightgreen text-white text-center">Current Prices</div>
             <div class="card-body">
-                <table class="table table-hover">
+                <table class="table table-hover align-middle text-center">
                     <thead>
                         <tr>
+                            <th>Image</th>
                             <th>Product</th>
                             <th>State</th>
                             <th>Market Name</th>
@@ -18,10 +19,17 @@
                     <tbody>
                         {% for price in prices %}
                         <tr>
-                            <td>{{ price.product }}</td>
-                            <td>{{ price.state }}</td>
-                            <td>{{ price.market_name }}</td>
-                            <td class="price-cell">{{ price.price }}</td>
+                            <td>
+                                {% if price.image_path %}
+                                    <img src="{{ url_for('static', filename='uploads/' + price.image_path) }}" alt="icon" width="80" height="80" style="object-fit: cover; border-radius: 8px;">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='placeholder.png') }}" alt="placeholder" width="80" height="80" style="object-fit: cover; border-radius: 8px;">
+                                {% endif %}
+                            </td>
+                            <td class="align-middle">{{ price.product }}</td>
+                            <td class="align-middle">{{ price.state }}</td>
+                            <td class="align-middle">{{ price.market_name }}</td>
+                            <td class="align-middle price-cell">{{ price.price }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
