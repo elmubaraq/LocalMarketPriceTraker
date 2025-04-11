@@ -29,12 +29,12 @@
                 <td>
                     {% if submission.image_path %}
                         <img src="{{ url_for('static', filename='uploads/' + submission.image_path) }}" alt="icon" width="40" height="40" class="img-thumbnail mb-1"><br>
-                        <form action="{{ url_for('change_image', id=submission.id) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('change_product_image', product=submission.product) }}" method="post" enctype="multipart/form-data">
                             <input type="file" name="image" accept="image/*" class="form-control form-control-sm mb-1" required>
                             <button type="submit" class="btn btn-sm btn-warning">Change</button>
                         </form>
                     {% else %}
-                        <form action="{{ url_for('upload_image', id=submission.id) }}" method="post" enctype="multipart/form-data">
+                        <form action="{{ url_for('upload_product_image', product=submission.product) }}" method="post" enctype="multipart/form-data">
                             <input type="file" name="image" accept="image/*" class="form-control form-control-sm mb-1" required>
                             <button type="submit" class="btn btn-sm btn-primary">Upload</button>
                         </form>

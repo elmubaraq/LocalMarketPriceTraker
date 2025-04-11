@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, session, f
 from flask_mysqldb import MySQL
 import MySQLdb.cursors
 import bcrypt
+from werkzeug.utils import secure_filename
 import re
 from decimal import Decimal
 import os
@@ -56,31 +57,79 @@ def login():
         else:
             return 'Invalid login credentials!'
     return render_template('login.html')
+#image universal oic
+def get_product_image(product_name):
+    cursor = mysql.connection.cursor()
+    cursor.execute("SELECT image_path FROM products WHERE name = %s", (product_name,))
+    result = cursor.fetchone()
+    return result[0] if result else None
+  
 
-#image upload route
-
-@app.route('/admin/upload_image/<int:id>', methods=['POST'])
-def upload_image(id):
+#new image code 
+@app.route('/upload_product_image/<product>', methods=['POST'])
+def upload_product_image(product):
     if 'loggedin' not in session or session['role'] != 'admin':
         return redirect(url_for('login'))
-    
-    file = request.files.get('image')
+
+    if 'image' not in request.files:
+        flash('No image uploaded', 'danger')
+        return redirect(url_for('admin'))
+
+    file = request.files['image']
+    if file.filename == '':
+        flash('No image selected', 'danger')
+        return redirect(url_for('admin'))
+
     if file and allowed_file(file.filename):
-        filename = f"{id}_{file.filename}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
         cursor = mysql.connection.cursor()
-        cursor.execute('UPDATE prices SET image_path = %s WHERE id = %s', (filename, id))
+        # Check if product exists in products table
+        cursor.execute("SELECT id FROM products WHERE name = %s", (product,))
+        product_row = cursor.fetchone()
+        if product_row:
+            # Update existing product image
+            cursor.execute("UPDATE products SET image_path = %s WHERE name = %s", (filename, product))
+        else:
+            # Insert new product with image
+            cursor.execute("INSERT INTO products (name, image_path) VALUES (%s, %s)", (product, filename))
         mysql.connection.commit()
         cursor.close()
+        flash(f'Image uploaded for {product}', 'success')
+    else:
+        flash('Invalid image file type', 'danger')
 
     return redirect(url_for('admin'))
 
-@app.route('/admin/change_image/<int:id>', methods=['POST'])
-def change_image(id):
-    return upload_image(id)
+@app.route('/change_product_image/<product>', methods=['POST'])
+def change_product_image(product):
+    if 'loggedin' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
 
+    if 'image' not in request.files:
+        flash('No file part')
+        return redirect(url_for('admin'))
+
+    file = request.files['image']
+    if file.filename == '':
+        flash('No selected file')
+        return redirect(url_for('admin'))
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+
+        # Update product_images table
+        cursor = mysql.connection.cursor()
+        cursor.execute("REPLACE INTO product_images (product, image_path) VALUES (%s, %s)", (product, filename))
+        mysql.connection.commit()
+        cursor.close()
+
+        flash('Image updated successfully for product: ' + product)
+
+    return redirect(url_for('admin'))
 
 
 
@@ -104,7 +153,14 @@ def register():
 @app.route('/dashboard')
 def dashboard():
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute('SELECT product, state, market_name, price, image_path FROM prices WHERE status = "approved"')
+    cursor.execute("""
+        SELECT prices.id, prices.product, prices.state, prices.market_name, prices.price,
+               products.image_path
+        FROM prices
+        LEFT JOIN products ON prices.product = products.name
+        WHERE prices.status = 'approved'
+        ORDER BY prices.date DESC
+    """)
     prices = cursor.fetchall()
     cursor.close()
     return render_template('dashboard.html', prices=prices)
@@ -234,28 +290,64 @@ def admin():
 
     page = request.args.get('page', 1, type=int)
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    # Total number of pending submissions
     cursor.execute('SELECT COUNT(*) FROM prices WHERE status = "pending"')
     total_submissions = cursor.fetchone()['COUNT(*)']
 
     per_page = 20
     offset = (page - 1) * per_page
 
-    cursor.execute('SELECT prices.id, prices.product, prices.state, prices.market_name, prices.price, prices.date, users.username FROM prices JOIN users ON prices.user_id = users.id WHERE prices.status = "pending" ORDER BY prices.date DESC LIMIT %s OFFSET %s', (per_page, offset))
+    # Join prices with users and LEFT JOIN products to get product image
+    cursor.execute('''
+        SELECT prices.id, prices.product, prices.state, prices.market_name, prices.price, prices.date, 
+               users.username, products.image_path 
+        FROM prices 
+        JOIN users ON prices.user_id = users.id 
+        LEFT JOIN products ON prices.product = products.name
+        WHERE prices.status = "pending" 
+        ORDER BY prices.date DESC 
+        LIMIT %s OFFSET %s
+    ''', (per_page, offset))
+
     submissions = cursor.fetchall()
     cursor.close()
 
     return render_template('admin.html', submissions=submissions, total_submissions=total_submissions, page=page, per_page=per_page)
 
-@app.route('/admin/approve/<int:id>', methods=['POST'])
+@app.route('/approve/<int:id>', methods=['POST'])
 def approve_submission(id):
-    if 'loggedin' not in session or session['role'] != 'admin':
-        return redirect(url_for('login'))
+    cursor = mysql.connection.cursor()
+
+    # Get the submission
+    cursor.execute("SELECT product FROM prices WHERE id = %s", (id,))
+    product_row = cursor.fetchone()
+    if not product_row:
+        flash('Submission not found.', 'danger')
+        return redirect(url_for('admin'))
+
+    product_name = product_row[0]
+
+    # Check if an image was uploaded
+    if 'image' in request.files:
+        image = request.files['image']
+        if image.filename != '':
+            filename = secure_filename(image.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            image.save(filepath)
+
+            # Insert or update the product image
+            cursor.execute("SELECT id FROM products WHERE name = %s", (product_name,))
+            existing = cursor.fetchone()
+            if existing:
+                cursor.execute("UPDATE products SET image_path = %s WHERE name = %s", (filename, product_name))
+            else:
+                cursor.execute("INSERT INTO products (name, image_path) VALUES (%s, %s)", (product_name, filename))
     
-    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cursor.execute('UPDATE prices SET status = "approved" WHERE id = %s', (id,))
+    # Approve the submission
+    cursor.execute("UPDATE prices SET status = 'approved' WHERE id = %s", (id,))
     mysql.connection.commit()
-    cursor.close()
-    
+    flash('Submission approved!', 'success')
     return redirect(url_for('admin'))
 
 @app.route('/admin/reject/<int:id>', methods=['POST'])
