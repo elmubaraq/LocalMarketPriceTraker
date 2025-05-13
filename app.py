@@ -6,7 +6,7 @@ from werkzeug.utils import secure_filename
 import re
 from decimal import Decimal
 import os
-
+import math 
 
 
 app = Flask(__name__)
@@ -150,7 +150,7 @@ def register():
         
         return redirect(url_for('login'))
     return render_template('register.html')
-    
+
 #notification for messages for the admin
 @app.context_processor
 def inject_user_and_notifications():
@@ -170,7 +170,17 @@ def inject_user_and_notifications():
 
 @app.route('/dashboard')
 def dashboard():
+    PER_PAGE = 20
+    page = request.args.get('page', 1, type=int)
+    offset = (page - 1) * PER_PAGE
+
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    # Count total approved prices
+    cursor.execute("SELECT COUNT(*) as count FROM prices WHERE status = 'approved'")
+    total = cursor.fetchone()['count']
+
+    # Fetch paginated approved prices
     cursor.execute("""
         SELECT prices.id, prices.product, prices.state, prices.market_name, prices.price,
                products.image_path
@@ -178,24 +188,97 @@ def dashboard():
         LEFT JOIN products ON prices.product = products.name
         WHERE prices.status = 'approved'
         ORDER BY prices.date DESC
-    """)
+        LIMIT %s OFFSET %s
+    """, (PER_PAGE, offset))
     prices = cursor.fetchall()
     cursor.close()
-    return render_template('dashboard.html', prices=prices)
+
+    total_pages = (total + PER_PAGE - 1) // PER_PAGE  # ceil without importing math
+
+    return render_template('dashboard.html', prices=prices, page=page, total_pages=total_pages)
+
 
 
 @app.route('/comparison', methods=['GET', 'POST'])
 def comparison():
-    if request.method == 'POST':
-        product = request.form['product']
-        
-        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('SELECT product, state, market_name, price FROM prices WHERE product = %s AND status = "approved"', (product,))
-        comparison_data = cursor.fetchall()
-        cursor.close()
-        
-        return render_template('comparison.html', comparison_data=comparison_data)
-    return render_template('comparison.html')
+  comparison_data = []
+  product = ""
+  selected_states = []
+  page = request.args.get('page', 1, type=int)
+  per_page = 20
+  total_pages = 0
+  
+  all_states = [
+      "All States", "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa", "Benue", "Borno", "Cross River",
+      "Delta", "Ebonyi", "Edo", "Ekiti", "Enugu", "FCT", "Gombe", "Imo", "Jigawa", "Kaduna", "Kano", "Katsina", "Kebbi",
+      "Kogi", "Kwara", "Lagos", "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo", "Plateau", "Rivers", "Sokoto",
+      "Taraba", "Yobe", "Zamfara"
+  ]
+  
+  if request.method == 'POST':
+      product = request.form['product']
+      selected_states = request.form.getlist('states')
+      return redirect(url_for('comparison', product=product, states=','.join(selected_states), page=1))
+  
+  product = request.args.get('product', '')
+  selected_states = request.args.get('states', '').split(',') if request.args.get('states') else []
+  
+  if product:
+      cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+  
+      product_keywords = [product.lower()] + [
+          word.strip().lower() for word in product.replace('bag of', '').replace('bg of', '').replace('local', '').split()
+      ]
+  
+      where_clauses = ['status = "approved"']
+      values = []
+  
+      if selected_states and "All States" not in selected_states:
+        where_clauses.append('state IN %s')
+        values.append(tuple(selected_states))
+
+
+
+      product_conditions = ' OR '.join(['LOWER(product) LIKE %s' for _ in product_keywords])
+      where_clauses.append(f'({product_conditions})')
+      values.extend([f"%{kw}%" for kw in product_keywords])
+  
+      where_sql = ' AND '.join(where_clauses)
+  
+      count_query = f'SELECT COUNT(*) as count FROM prices WHERE {where_sql}'
+      cursor.execute(count_query, tuple(values))
+      total_records = cursor.fetchone()['count']
+      total_pages = math.ceil(total_records / per_page)
+  
+      offset = (page - 1) * per_page
+      data_query = f'''
+          SELECT product, state, market_name, price
+          FROM prices
+          WHERE {where_sql}
+          ORDER BY
+              CASE
+                  WHEN LOWER(product) = %s THEN 0
+                  WHEN LOWER(product) LIKE %s THEN 1
+                  ELSE 2
+              END,
+              id DESC
+          LIMIT %s OFFSET %s
+      '''
+  
+      values_with_priority = values + [product.lower(), f"%{product.lower()}%", per_page, offset]
+      cursor.execute(data_query, tuple(values_with_priority))
+      comparison_data = cursor.fetchall()
+      cursor.close()
+  
+  return render_template(
+      'comparison.html',
+      comparison_data=comparison_data,
+      product=product,
+      selected_states=selected_states,
+      all_states=all_states,
+      page=page,
+      total_pages=total_pages
+  )
 
 
 

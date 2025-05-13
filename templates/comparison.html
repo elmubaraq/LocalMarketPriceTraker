@@ -3,15 +3,34 @@
 <div class="row">
     <div class="col-12">
         <h1 class="mb-4">Price Comparison</h1>
-        <form class="form-inline mb-4" method="post">
-            <input class="form-control mr-2" type="text" placeholder="Search for a product" name="product" required>
-            <button class="btn btn-lightgreen" type="submit">Search</button>
-        </form>
+            <form class="mb-4" method="post">
+                <div class="form-group mb-2">
+                    <input class="form-control" type="text" name="product" placeholder="Search for a product" value="{{ product }}" required>
+                </div>
+            
+                <label class="font-weight-bold">Select States:</label>
+                <div class="row">
+                    {% for state in all_states %}
+                    <div class="col-md-3 col-sm-4 col-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="states" value="{{ state }}"
+                                id="state_{{ loop.index }}"
+                                {% if state in selected_states or (not selected_states and state == "All States") %}checked{% endif %}>
+                            <label class="form-check-label" for="state_{{ loop.index }}">{{ state }}</label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            
+                <button class="btn btn-lightgreen mt-3" type="submit">Search</button>
+            </form>
+            
+
         {% if comparison_data %}
         <div class="card shadow-lg">
             <div class="card-header bg-lightgreen text-white">Comparison Table</div>
-            <div class="card-body">
-                <table class="table table-hover">
+            <div class="card-body table-responsive">
+                <table class="table table-hover text-center align-middle">
                     <thead>
                         <tr>
                             <th>Product</th>
@@ -26,14 +45,72 @@
                             <td>{{ data.product }}</td>
                             <td>{{ data.state }}</td>
                             <td>{{ data.market_name }}</td>
-                            <td>{{ data.price }}</td>
+                            <td class="price-cell">{{ data.price }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
+
+                <!-- Pagination Controls -->
+                <div class="d-flex justify-content-center mt-4">
+                    <nav>
+                        <ul class="pagination">
+                            {% if page > 1 %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('comparison', product=product, states=selected_states, page=page-1) }}">Previous</a>
+                            </li>
+                            {% endif %}
+
+                            {% for p in range(1, total_pages + 1) %}
+                            <li class="page-item {% if p == page %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('comparison', product=product, states=selected_states, page=p) }}">{{ p }}</a>
+                            </li>
+                            {% endfor %}
+
+                            {% if page < total_pages %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('comparison', product=product, states=selected_states, page=page+1) }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </div>
+        {% elif product %}
+        <div class="alert alert-warning mt-4">No results found for your search.</div>
         {% endif %}
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const priceCells = document.querySelectorAll('.price-cell');
+    priceCells.forEach(cell => {
+        const rawPrice = parseFloat(cell.textContent);
+        if (!isNaN(rawPrice)) {
+            cell.textContent = "₦" + rawPrice.toLocaleString('en-US', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+    });
+
+    // Handle "All States" checkbox logic
+    const allStatesCheckbox = document.getElementById('all-states');
+    const stateCheckboxes = document.querySelectorAll('input[name="states"]:not(#all-states)');
+
+    allStatesCheckbox.addEventListener('change', () => {
+        stateCheckboxes.forEach(cb => cb.checked = allStatesCheckbox.checked);
+    });
+
+    stateCheckboxes.forEach(cb => {
+        cb.addEventListener('change', () => {
+            if (!cb.checked) {
+                allStatesCheckbox.checked = false;
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
