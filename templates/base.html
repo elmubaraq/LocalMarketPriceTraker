@@ -6,6 +6,31 @@
     <title>Local Market Price Tracker</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        .navbar .badge {
+    font-size: 0.7rem;
+    padding: 4px 6px;
+}
+
+.navbar .position-relative {
+    margin-right: 1rem;
+}
+
+.navbar .fa-bell {
+    font-size: 1.2rem;
+    position: relative;
+}
+
+.badge.position-absolute {
+    font-size: 0.65rem;
+    transform: translate(-30%, -30%);
+    border-radius: 50%;
+    padding: 4px 6px;
+}
+
+
+    </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
@@ -24,33 +49,97 @@
                 <li class="nav-item">
                     <a class="nav-link" href="/trends">Trends</a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/submit">Submit</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/notifications">Notify</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="/admin">Admin</a>
-                </li>
+            
                 {% if session.get('loggedin') %}
+                    {% if session.get('is_admin') %}
+                        <!-- Admin with Notification Bell -->
+                        <li class="nav-item position-relative">
+                            <a class="nav-link d-flex align-items-center" href="/admin">
+                                <i class="fas fa-bell"></i>
+                                {% if pending_count > 0 %}
+                                    <span class="badge badge-danger position-absolute top-0 start-100 translate-middle">
+                                        {{ pending_count }}
+                                        <span class="sr-only">unreviewed submissions</span>
+                                    </span>
+                                {% endif %}
+                            </a>
+                        </li>
+
+                    {% else %}
+                        <!-- Show only to regular users -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="/submit">Submit</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/notifications">Notify</a>
+                        </li>
+                    {% endif %}
+            
+                    <!-- Common to all logged-in users -->
                     <li class="nav-item">
                         <a class="nav-link" href="/logout">Logout</a>
                     </li>
                 {% else %}
+                    <!-- When not logged in -->
                     <li class="nav-item">
                         <a class="nav-link" href="/login">Login</a>
                     </li>
                 {% endif %}
             </ul>
+            
         </div>
     </nav>
+
+
     <div class="container mt-4">
         {% block content %}{% endblock %}
     </div>
+</div> <!-- container -->
+
+<!-- Partner Logos Bar -->
+<div class="partner-bar bg-light py-3 border-top">
+    <div class="container d-flex flex-wrap justify-content-center align-items-center">
+        <img src="{{ url_for('static', filename='img/partner1.png') }}" class="mx-3 my-2" alt="Partner 1" style="height: 40px;">
+        <img src="{{ url_for('static', filename='img/partner2.png') }}" class="mx-3 my-2" alt="Partner 2" style="height: 40px;">
+        <img src="{{ url_for('static', filename='img/partner3.png') }}" class="mx-3 my-2" alt="Partner 3" style="height: 40px;">
+        <!-- Add more logos as needed -->
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-dark text-light pt-4 pb-2 mt-4">
+    <div class="container text-center text-md-left">
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <h5>Local Market Price Tracker</h5>
+                <p class="small mb-0">Empowering market transparency and data-driven decisions.</p>
+            </div>
+            <div class="col-md-4 mb-3">
+                <h6>Contact Us</h6>
+                <p class="small mb-1 mb-md-0">📞 +234-800-123-4567</p>
+                <p class="small mb-1 mb-md-0">📧 info@markettracker.ng</p>
+            </div>
+            <div class="col-md-4 mb-3">
+                <h6>Address</h6>
+                <p class="small mb-0">123 Data Lane,<br>Nasarawa, Niger State, Nigeria</p>
+            </div>
+        </div>
+    </div>
+    <div class="text-center mt-3 border-top pt-3">
+        <small>&copy; <span id="year"></span> Local Market Price Tracker. All rights reserved.</small>
+    </div>
+</footer>
+    
+
+
+
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+    <script>
+        // Set current year dynamically
+        document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
 </body>
 </html>

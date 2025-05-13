@@ -53,10 +53,12 @@ def login():
             session['id'] = account['id']
             session['username'] = account['username']
             session['role'] = account['role']
+            session['is_admin'] = (account['role'].lower() == 'admin')  # ✅ This line sets is_admin flag
             return redirect(url_for('dashboard'))
         else:
             return 'Invalid login credentials!'
     return render_template('login.html')
+
 #image universal oic
 def get_product_image(product_name):
     cursor = mysql.connection.cursor()
@@ -148,6 +150,22 @@ def register():
         
         return redirect(url_for('login'))
     return render_template('register.html')
+    
+#notification for messages for the admin
+@app.context_processor
+def inject_user_and_notifications():
+    pending_count = 0
+    is_admin = session.get('is_admin', False)
+
+    if session.get('loggedin') and is_admin:
+        cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cursor.execute("SELECT COUNT(*) AS count FROM prices WHERE status = 'pending'")
+        result = cursor.fetchone()
+        pending_count = result['count'] if result else 0
+        cursor.close()
+
+    return dict(is_admin=is_admin, pending_count=pending_count)
+
 
 
 @app.route('/dashboard')
