@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<h4 class="mb-4">Quote Requests (Admin Panel)</h4>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{% if requests %}
+<div class="table-responsive">
+  <table class="table table-bordered table-sm">
+    <thead class="thead-light">
+      <tr>
+        <th>Product</th>
+        <th>Category</th>
+        <th>Description</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Image</th>
+        <th>Status</th>
+        <th>Response</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for req in requests %}
+      <tr>
+        <td>{{ req.product_name }}</td>
+        <td>{{ req.category }}</td>
+        <td>{{ req.description }}</td>
+        <td>{{ req.email }}</td>
+        <td>{{ req.phone }}</td>
+        <td>
+          {% if req.image_path %}
+            <a href="{{ url_for('static', filename='uploads/' ~ req.image_path) }}" target="_blank">
+              <img src="{{ url_for('static', filename='uploads/' ~ req.image_path) }}" style="max-width: 50px;">
+            </a>
+          {% else %}
+            <span class="text-muted">No image</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if req.response %}
+            <span class="badge badge-success">Responded</span>
+          {% else %}
+            <span class="badge badge-warning">Pending</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if req.response %}
+            <strong>Price:</strong> ₦{{ req.price }}<br>
+            <strong>Location:</strong> {{ req.availability_location }}<br>
+            <strong>Supplier:</strong> {{ req.supplier_contact }}<br>
+            <small><strong>Note:</strong> {{ req.response }}</small>
+          {% else %}
+            <form method="POST" action="{{ url_for('admin_quote_requests') }}" >
+              <input type="hidden" name="request_id" value="{{ req.id }}">
+              <div class="form-group mb-1">
+                <input type="text" name="price" class="form-control form-control-sm" placeholder="₦ Price" required>
+              </div>
+              <div class="form-group mb-1">
+                <input type="text" name="availability_location" class="form-control form-control-sm" placeholder="Location/Market" required>
+              </div>
+              <div class="form-group mb-1">
+                <input type="text" name="supplier_contact" class="form-control form-control-sm" placeholder="Supplier Contact" required>
+              </div>
+              <div class="form-group mb-2">
+                <textarea name="response" class="form-control form-control-sm" rows="2" placeholder="Response/Note" required></textarea>
+              </div>
+              <button type="submit" class="btn btn-sm btn-primary btn-block">Send Response</button>
+            </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <p class="text-muted">No quote requests found.</p>
+{% endif %}
+{% endblock %}

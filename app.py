@@ -52,11 +52,13 @@ def login():
             session['loggedin'] = True
             session['id'] = account['id']
             session['username'] = account['username']
+            session['email'] = account['email']  # ✅ Capture user's email in session
             session['role'] = account['role']
-            session['is_admin'] = (account['role'].lower() == 'admin')  # ✅ This line sets is_admin flag
+            session['is_admin'] = (account['role'].lower() == 'admin')
             return redirect(url_for('dashboard'))
         else:
             return 'Invalid login credentials!'
+
     return render_template('login.html')
 
 #image universal oic
@@ -142,13 +144,30 @@ def register():
         email = request.form['email']
         password = request.form['password']
         role = 'user'
-        
+
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, %s)', (username, email, password, role))
+
+        # Check if username or email already exists
+        cursor.execute('SELECT * FROM users WHERE username = %s OR email = %s', (username, email))
+        existing_user = cursor.fetchone()
+
+        if existing_user:
+            if existing_user['username'] == username:
+                flash('Username already taken. Please choose another.', 'danger')
+            elif existing_user['email'] == email:
+                flash('Email already registered. Please use another.', 'danger')
+            cursor.close()
+            return redirect(url_for('register'))
+
+        # If not existing, insert new user
+        cursor.execute('INSERT INTO users (username, email, password, role) VALUES (%s, %s, %s, %s)',
+                       (username, email, password, role))
         mysql.connection.commit()
         cursor.close()
-        
+
+        flash('Registration successful! Please log in.', 'success')
         return redirect(url_for('login'))
+
     return render_template('register.html')
 
 #notification for messages for the admin
@@ -485,6 +504,73 @@ def admin_register():
     return render_template('admin_register.html')
 
 
+@app.route("/quote_request", methods=["GET", "POST"])
+def quote_request():
+    if not session.get("loggedin"):
+        return redirect("/login")
+
+    user_email = session.get("email")
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    if request.method == "POST":
+        product_name = request.form["product_name"]
+        category = request.form.get("category")
+        description = request.form.get("description")
+        phone = request.form.get("phone")
+        image = request.files.get("image")
+
+        image_path = None
+        if image and image.filename != "":
+            filename = secure_filename(image.filename)
+            image.save(os.path.join("static/uploads", filename))
+            image_path = filename
+
+        cursor.execute("""
+            INSERT INTO quote_requests (product_name, category, description, email, phone, image_path)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        """, (product_name, category, description, user_email, phone, image_path))
+        mysql.connection.commit()
+        flash("Your quote request has been submitted!", "success")
+        return redirect("/quote_request")
+
+    # Fetch existing quote requests for the logged-in user
+    cursor.execute("SELECT * FROM quote_requests WHERE email = %s ORDER BY submitted_at DESC", (user_email,))
+    my_requests = cursor.fetchall()
+
+    return render_template("quote_request.html", my_requests=my_requests)
+
+
+@app.route("/admin/quote_requests", methods=["GET", "POST"])
+def admin_quote_requests():
+    if not session.get("loggedin") or not session.get("is_admin"):
+        return redirect("/login")
+
+    cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+
+    if request.method == "POST":
+        req_id = request.form.get("request_id")
+        response = request.form.get("response")
+        price = request.form.get("price")
+        location = request.form.get("availability_location")
+        supplier_contact = request.form.get("supplier_contact")
+
+        cursor.execute("""
+            UPDATE quote_requests
+            SET response=%s, price=%s, availability_location=%s, supplier_contact=%s
+            WHERE id=%s
+        """, (response, price, location, supplier_contact, req_id))
+        mysql.connection.commit()
+        flash("Response sent successfully.", "success")
+        return redirect("/admin/quote_requests")
+
+    cursor.execute("SELECT * FROM quote_requests ORDER BY submitted_at DESC")
+    requests = cursor.fetchall()
+
+    return render_template("admin_quote_requests.html", requests=requests)
+
+
+
 
 @app.route('/logout')
 def logout():
@@ -492,6 +578,7 @@ def logout():
     session.pop('id', None)
     session.pop('username', None)
     return redirect(url_for('login'))
+
 
 
 if __name__ == '__main__':
