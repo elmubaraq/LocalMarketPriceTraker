@@ -7,7 +7,7 @@ import re
 from decimal import Decimal
 import os
 import math 
-
+from math import ceil
 
 app = Flask(__name__)
 
@@ -39,12 +39,16 @@ def home():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    error = None
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
 
         cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-        cursor.execute('SELECT * FROM users WHERE username = %s AND password = %s', (username, password))
+        cursor.execute(
+            'SELECT * FROM users WHERE username = %s AND password = %s',
+            (username, password)
+        )
         account = cursor.fetchone()
         cursor.close()
 
@@ -52,14 +56,14 @@ def login():
             session['loggedin'] = True
             session['id'] = account['id']
             session['username'] = account['username']
-            session['email'] = account['email']  # ✅ Capture user's email in session
+            session['email'] = account['email']  # ✅ Capture user's email
             session['role'] = account['role']
             session['is_admin'] = (account['role'].lower() == 'admin')
             return redirect(url_for('dashboard'))
         else:
-            return 'Invalid login credentials!'
+            error = "Invalid login credentials!"
 
-    return render_template('login.html')
+    return render_template('login.html', error=error)
 
 #image universal oic
 def get_product_image(product_name):
@@ -396,13 +400,6 @@ def submit():
     return render_template('submit.html')
 
 
-@app.route('/notifications', methods=['GET', 'POST'])
-def notifications():
-    if request.method == 'POST':
-        # Handle notifications settings
-        return redirect(url_for('dashboard'))
-    return render_template('notifications.html')
-
 @app.route('/admin')
 def admin():
     if 'loggedin' not in session or session['role'] != 'admin':
@@ -541,6 +538,8 @@ def quote_request():
     return render_template("quote_request.html", my_requests=my_requests)
 
 
+
+
 @app.route("/admin/quote_requests", methods=["GET", "POST"])
 def admin_quote_requests():
     if not session.get("loggedin") or not session.get("is_admin"):
@@ -548,6 +547,7 @@ def admin_quote_requests():
 
     cursor = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
 
+    # Process POST (send response)
     if request.method == "POST":
         req_id = request.form.get("request_id")
         response = request.form.get("response")
@@ -562,12 +562,32 @@ def admin_quote_requests():
         """, (response, price, location, supplier_contact, req_id))
         mysql.connection.commit()
         flash("Response sent successfully.", "success")
-        return redirect("/admin/quote_requests")
+        return redirect(url_for("admin_quote_requests"))
 
-    cursor.execute("SELECT * FROM quote_requests ORDER BY submitted_at DESC")
+    # Pagination params
+    page = int(request.args.get("page", 1))
+    per_page = 20
+    offset = (page - 1) * per_page
+
+    # Get total number of records
+    cursor.execute("SELECT COUNT(*) AS total FROM quote_requests")
+    total = cursor.fetchone()["total"]
+    total_pages = ceil(total / per_page)
+
+    # Fetch requests (pending first, then responded), paginated
+    cursor.execute("""
+        SELECT * FROM quote_requests 
+        ORDER BY (response IS NOT NULL), submitted_at DESC 
+        LIMIT %s OFFSET %s
+    """, (per_page, offset))
     requests = cursor.fetchall()
 
-    return render_template("admin_quote_requests.html", requests=requests)
+    return render_template(
+        "admin_quote_requests.html",
+        requests=requests,
+        page=page,
+        total_pages=total_pages
+    )
 
 
 

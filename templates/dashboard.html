@@ -2,10 +2,18 @@
 {% block content %}
 <div class="row">
     <div class="col-12">
-        <h1 class="mb-4 text-center">Dashboard</h1>
+        <h1 class="mb-4 text-center">
+            Dashboard
+            <span class="badge badge-success align-middle" style="font-size: 0.8rem;">
+                <i class="fas fa-circle blink" style="font-size: 0.6rem;"></i> Live Data
+            </span>
+        </h1>
         <div class="card shadow-lg">
-            <div class="card-header bg-lightgreen text-white text-center">Current Prices</div>
-            <div class="card-body table-responsive">
+            <div class="card-header bg-lightgreen text-white text-center">
+                Current Prices 
+                <span class="badge badge-light text-dark ml-2">Last updated: just now</span>
+            </div>
+            <div class="card-body table-responsive fade-in">
                 <table class="table table-hover align-middle text-center">
                     <thead>
                         <tr>
@@ -64,9 +72,29 @@
     </div>
 </div>
 
+<style>
+.fade-in {
+    animation: fadeIn 1s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.blink {
+    animation: blink 1.5s infinite;
+    color: #00ff00;
+}
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.2; }
+    100% { opacity: 1; }
+}
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    // Format prices as monetary values with Naira symbol
     const priceCells = document.querySelectorAll('.price-cell');
     priceCells.forEach(cell => {
         const rawPrice = parseFloat(cell.textContent);

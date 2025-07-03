@@ -46,7 +46,7 @@
                         <!-- Admin Links -->
                         <li class="nav-item position-relative">
                             <a class="nav-link d-flex align-items-center" href="/admin">
-                                <i class="fas fa-bell"></i>
+                                <i class="fas fa-bell mr-1"></i> Submissions
                                 {% if pending_count > 0 %}
                                     <span class="badge badge-danger position-absolute top-0 start-100 translate-middle">
                                         {{ pending_count }}
@@ -62,7 +62,6 @@
                     {% else %}
                         <!-- Regular User Links -->
                         <li class="nav-item"><a class="nav-link" href="/submit">Submit</a></li>
-                        <li class="nav-item"><a class="nav-link" href="/notifications">Notify</a></li>
                         <li class="nav-item"><a class="nav-link" href="/quote_request">Request Quote</a></li> <!-- quote_request.html -->
                     {% endif %}
                     <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
